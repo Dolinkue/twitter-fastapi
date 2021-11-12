@@ -1,8 +1,10 @@
 # Python
+import json
 from uuid import UUID
 from datetime import date
 from datetime import datetime
 from typing import Optional, List
+
 
 
 # Pydantic
@@ -13,6 +15,7 @@ from pydantic import Field
 # FastAPI
 from fastapi import FastAPI
 from fastapi import status
+from fastapi import Body
 
 app = FastAPI()
 
@@ -30,6 +33,7 @@ class UserLogin(UserBase):
 
     )
 
+
 class User(UserBase):
     first_name: str = Field(
         ...,
@@ -42,6 +46,13 @@ class User(UserBase):
         max_length=50
     )
     birth_date: Optional[date] = Field(default=None)
+
+class UserRegister(User):
+    password: str = Field(
+        ..., 
+        min_length=8,
+        max_length=64
+    )
 
 class Tweet(BaseModel):
     tweet_id: UUID = Field(...)
@@ -70,8 +81,32 @@ def home():
     summary="Register a User",
     tags=["Users"]
 )
-def signup(): 
-    pass
+def signup(user: UserRegister = Body(...)): 
+    """
+    Signup
+
+    This path operation register a user in the app
+
+    Parameters: 
+        - Request body parameter
+            - user: UserRegister
+    
+    Returns a json with the basic user information: 
+        - user_id: UUID
+        - email: Emailstr
+        - first_name: str
+        - last_name: str
+        - birth_date: date
+    """
+    with open("user.json", "r+", encoding="utf-8") as f: 
+        results = json.loads(f.read())
+        user_dict = user.dict()
+        user_dict["user_id"] = str(user_dict["user_id"]) #tanto user_id como Birth se cambian porque son del tipo UUID y Date con lo cual al no ser str van a dar error
+        user_dict["birth_date"] = str(user_dict["birth_date"])
+        results.append(user_dict)
+        f.seek(0) #para solucinar un bug que me puede surgir, por eso me muevo al primer lugar para que comience a escribir desde 0 sin crear nuevas listas
+        f.write(json.dumps(results))
+        return user
 
 @app.post(
     path="/login",
@@ -91,7 +126,22 @@ def login():
     tags=["Users"]
 )
 def show_all_users(): 
-    pass
+    """
+    This path operation shows all users in the app
+
+    Parameters:
+    -
+
+    Returns a json list with all users in the app, with the following keys:
+    - user_id: UUID
+    - email: Emailstr
+    - first_name: str
+    - last_name: str
+    - birth_date: datetime
+    """
+    with open("user.json", "r", encoding="utf-8") as f:
+        results = json.loads(f.read())
+        return results
 
 @app.get(
     path="/users/{user_id}",
